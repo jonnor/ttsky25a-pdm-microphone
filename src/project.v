@@ -16,6 +16,8 @@ module tt_um_jonnor_pdm_microphone (
     input  wire       rst_n     // reset_n - low to reset
 );
 
+    wire pdm_clk;
+
     // All output pins must be assigned. If not used, assign to 0.
     assign uio_out = 0;
     assign uio_oe  = 0;
@@ -30,7 +32,7 @@ module tt_um_jonnor_pdm_microphone (
     // Output mapping
     assign uo_out[0] = 0;
     wire uart_tx = uo_out[1];
-    wire pdm_clk = uo_out[2];
+    assign uo_out[2] = pdm_clk;
     assign uo_out[3] = 0;
     assign uo_out[4] = 0;
     assign uo_out[5] = 0;
