@@ -12,17 +12,17 @@ module cic3_pdm (
     parameter OUTPUT_SHIFT = 8; // Can tune this
 
     // Internal registers
-    reg signed [31:0] integrator_0 = 0;
-    reg signed [31:0] integrator_1 = 0;
-    reg signed [31:0] integrator_2 = 0;
+    reg signed [24:0] integrator_0 = 0;
+    reg signed [24:0] integrator_1 = 0;
+    reg signed [24:0] integrator_2 = 0;
 
     reg [5:0] decim_counter = 0;
-    reg signed [31:0] comb_0 = 0, comb_1 = 0;
+    reg signed [24:0] comb_0 = 0, comb_1 = 0;
 
     /* verilator lint_off UNUSEDSIGNAL */
-    reg signed [31:0] comb_2 = 0;
+    reg signed [24:0] comb_2 = 0;
 
-    reg signed [31:0] delay_0 = 0, delay_1 = 0, delay_2 = 0;
+    reg signed [24:0] delay_0 = 0, delay_1 = 0, delay_2 = 0;
 
     reg signed [15:0] pcm_out_r = 0;
     reg pcm_valid_r = 0;
