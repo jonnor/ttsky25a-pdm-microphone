@@ -24,14 +24,13 @@ module tt_um_jonnor_pdm_microphone (
     wire _unused = &{ena, clk, rst_n, 1'b0};
 
     // Input mapping
-    wire pdm_clk = ui_in[0];  // Use bit 0 for PDM clock
-    wire pdm_dat = ui_in[1];  // Use bit 1 for PDM data
+    wire pdm_dat = ui_in[1];
     wire rst = ~rst_n;
 
     // Output mapping
     assign uo_out[0] = 0;
     wire uart_tx = uo_out[1];
-    assign uo_out[2] = 0;
+    wire pdm_clk = uo_out[2];
     assign uo_out[3] = 0;
     assign uo_out[4] = 0;
     assign uo_out[5] = 0;
