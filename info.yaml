@@ -19,6 +19,13 @@ project:
   source_files:
     - "project.v"
     - "cic3_pdm.v"
+    - peripheral.v
+    - test_harness/spi_reg.sv
+    - test_harness/synchronizer.sv
+    - test_harness/falling_edge_detector.sv
+    - test_harness/rising_edge_detector.sv
+    - test_harness/reclocking.sv
+
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
