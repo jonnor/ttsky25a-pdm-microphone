@@ -37,6 +37,10 @@ pico:
 	mpremote cp build/tt_fpga.bin :fpga_bitstream.bin
 	mpremote run scripts/fpga_flash_prog.py
 
+record:
+	mpremote run scripts/test_peripheral_spi.py
+	mpremote cp :pcm.raw ./
+
 png:
 	$(ENVIRONMENT) venv/bin/python tt/tt_tool.py --create-png
 
