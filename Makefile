@@ -39,7 +39,7 @@ pico:
 
 record:
 	mpremote run scripts/test_peripheral_spi.py
-	mpremote cp :pcm.raw ./
+	mpremote cp :pcm.wav ./
 
 png:
 	$(ENVIRONMENT) venv/bin/python tt/tt_tool.py --create-png

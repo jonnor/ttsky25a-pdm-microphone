@@ -151,6 +151,27 @@ def read_with_interrupt(duration=10):
     effective_samplerate = total_samples / (delta/1e6)
     print('read', delta/1e3, total_samples, effective_samplerate)
 
+
+# From https://github.com/miketeachman/micropython-i2s-examples/blob/master/examples/record_mic_to_sdcard_blocking.py
+def create_wav_header(sampleRate, bitsPerSample, num_channels, num_samples):
+    datasize = num_samples * num_channels * bitsPerSample // 8
+    o = bytes("RIFF", "ascii")  # (4byte) Marks file as RIFF
+    o += (datasize + 36).to_bytes(
+        4, "little"
+    )  # (4byte) File size in bytes excluding this and RIFF marker
+    o += bytes("WAVE", "ascii")  # (4byte) File type
+    o += bytes("fmt ", "ascii")  # (4byte) Format Chunk Marker
+    o += (16).to_bytes(4, "little")  # (4byte) Length of above format data
+    o += (1).to_bytes(2, "little")  # (2byte) Format type (1 - PCM)
+    o += (num_channels).to_bytes(2, "little")  # (2byte)
+    o += (sampleRate).to_bytes(4, "little")  # (4byte)
+    o += (sampleRate * num_channels * bitsPerSample // 8).to_bytes(4, "little")  # (4byte)
+    o += (num_channels * bitsPerSample // 8).to_bytes(2, "little")  # (2byte)
+    o += (bitsPerSample).to_bytes(2, "little")  # (2byte)
+    o += bytes("data", "ascii")  # (4byte) Data Chunk Marker
+    o += (datasize).to_bytes(4, "little")  # (4byte) Data size in bytes
+    return o
+
 def run_test():
 
     # Set clock frequency of RP2040
@@ -239,9 +260,19 @@ def run_test():
     print('PCM read duration', per_sample)
     assert per_sample < deadline, (per_sample, deadline)
 
-    file_path = 'pcm.raw'
+
+    wav_header = create_wav_header(
+        samplerate,
+        16,
+        1,
+        n_samples,
+    )
+
+    file_path = 'pcm.wav'
     with open(file_path, 'wb') as f:
+        header_length = f.write(wav_header)
         f.write(samples)
+
     print('Wrote', file_path)
     
 
