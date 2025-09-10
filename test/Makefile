@@ -5,7 +5,8 @@
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = project.v cic3_pdm.v
+PROJECT_SOURCES = project.v cic3_pdm.v peripheral.v \
+    test_harness/spi_reg.sv test_harness/synchronizer.sv test_harness/falling_edge_detector.sv test_harness/rising_edge_detector.sv test_harness/reclocking.sv
 
 ifneq ($(GATES),yes)
 

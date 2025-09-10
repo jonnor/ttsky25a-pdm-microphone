@@ -1,10 +1,11 @@
 /*
- * Copyright (c) 2024 Your Name
+ * Copyright (c) 2025 Michael Bell
  * SPDX-License-Identifier: Apache-2.0
  */
 
 `default_nettype none
 
+/** TinyQV peripheral test using SPI */
 module tt_um_jonnor_pdm_microphone (
     input  wire [7:0] ui_in,    // Dedicated inputs
     output wire [7:0] uo_out,   // Dedicated outputs
@@ -16,126 +17,116 @@ module tt_um_jonnor_pdm_microphone (
     input  wire       rst_n     // reset_n - low to reset
 );
 
-    wire pdm_clk;
+  // SPI access to registers
+  wire [5:0] address;
+  wire [31:0] data_in;  // Data in to peripheral
+  wire [31:0] data_out; // Data out from peripheral
+  reg [1:0] data_write_n;
+  reg [1:0] data_read_n;
+  wire data_ready;
+  wire user_interrupt;
 
-    // All output pins must be assigned. If not used, assign to 0.
-    assign uio_out = 0;
-    assign uio_oe  = 0;
+  // Peripherals get synchronized ui_in.
+  reg [7:0] ui_in_sync;
+  synchronizer #(.STAGES(2), .WIDTH(8)) synchronizer_ui_in_inst (.clk(clk), .data_in(ui_in), .data_out(ui_in_sync));
 
-    // List all unused inputs to prevent warnings
-    wire _unused = &{ena, clk, rst_n, 1'b0};
+  // Register reset as in TinyQV
+  /* verilator lint_off SYNCASYNCNET */
+  reg rst_reg_n;
+  /* verilator lint_on SYNCASYNCNET */
+  always @(negedge clk) rst_reg_n <= rst_n;
 
-    // Input mapping
-    wire pdm_dat = ui_in[1];
-    wire rst = ~rst_n;
+  // The peripheral under test.
+  // **** Change the module name from tqvp_example to match your peripheral. ****
+  tqvp_jnms_pdm user_peripheral(
+    .clk(clk),
+    .rst_n(rst_reg_n),
+    .ui_in(ui_in_sync),
+    .uo_out(uo_out),
+    .address(address),
+    .data_in(data_in),
+    .data_write_n(data_write_n),
+    .data_read_n(data_read_n),
+    .data_out(data_out),
+    .data_ready(data_ready),
+    .user_interrupt(user_interrupt)
+  );
 
-    // Output mapping
-    assign uo_out[0] = 0;
-    wire uart_tx = uo_out[1];
-    assign uo_out[2] = pdm_clk;
-    assign uo_out[3] = 0;
-    assign uo_out[4] = 0;
-    assign uo_out[5] = 0;
-    assign uo_out[6] = 0;
-    assign uo_out[7] = 0;
+  // SPI data indications
+  wire addr_valid;
+  wire data_valid;
+  wire data_rw;
+  wire [1:0] txn_n;
+  reg [31:0] data_out_masked;
 
-    // Internals
-	wire clk_uart;
-	reg [7:0]	char = 8'h6f;
-	reg [15:0]	pcm;
-	reg		pcm_valid;
-	reg		uart_go = 0;
-	wire		uart_ready;
+  // SPI interface
+  wire spi_cs_n;
+  wire spi_clk;
+  wire spi_miso;
+  wire spi_mosi;
 
-	clk_div_pdm	clk_div_pdm_1(clk, pdm_clk);
-	clk_div_uart	clk_div_uart_1(clk, clk_uart);
-	uart_tx		uart_tx_1(clk_uart, char, uart_go, uart_tx, uart_ready);
-	cic3_pdm	cic3_pdm_1(pdm_clk, rst, pdm_dat, pcm, pcm_valid);
+  // Synchronized SPI inputs
+  wire spi_cs_n_sync;
+  wire spi_clk_sync;
+  wire spi_mosi_sync;
 
-	always @(posedge pdm_clk) begin
-		char		<= pcm[7:0];
-		uart_go		<= pcm_valid;
-	end
+  assign spi_cs_n  = uio_in[4];
+  assign spi_clk   = uio_in[5];
+  assign spi_mosi  = uio_in[6];
 
-endmodule
+  synchronizer #(.STAGES(2), .WIDTH(1)) synchronizer_spi_cs_n_inst (.clk(clk), .data_in(spi_cs_n), .data_out(spi_cs_n_sync));
+  synchronizer #(.STAGES(2), .WIDTH(1)) synchronizer_spi_clk_inst  (.clk(clk), .data_in(spi_clk),  .data_out(spi_clk_sync));
+  synchronizer #(.STAGES(2), .WIDTH(1)) synchronizer_spi_mosi_inst (.clk(clk), .data_in(spi_mosi), .data_out(spi_mosi_sync));  
 
-module clk_div_pdm(input clk, output reg clk_pdm);
-	reg [3:0] t = 0;
-	always @(posedge clk) begin
-		t <= t<12-1 ? t+1 : 0;
-		clk_pdm <= t<6;
-	end
-endmodule
+  // The SPI instance
+  spi_reg #(.ADDR_W(6), .REG_W(32)) i_spi_reg(
+    .clk(clk),
+    .rstb(rst_reg_n),
+    .ena(1'b1),
+    .spi_mosi(spi_mosi_sync),
+    .spi_miso(spi_miso),
+    .spi_clk(spi_clk_sync),
+    .spi_cs_n(spi_cs_n_sync),
+    .reg_addr(address),
+    .reg_data_i(data_out_masked),
+    .reg_data_o(data_in),
+    .reg_addr_v(addr_valid),
+    .reg_data_i_dv(data_ready),
+    .reg_data_o_dv(data_valid),
+    .reg_rw(data_rw),
+    .txn_width(txn_n)
+  );
 
-module clk_div_uart(input clk, output reg clk_uart);
-	reg [3:0] t = 0;
-	always @(posedge clk) begin
-		t <= t<4-1 ? t+1 : 0;
-		clk_uart <= t<2;
-	end
-endmodule
+  always @(*) begin
+      data_write_n = 2'b11;
+      data_read_n = 2'b11;
 
+      if (data_valid && data_rw) begin
+        data_write_n = txn_n;
+      end
+      if (addr_valid && !data_rw) begin
+        data_read_n = txn_n;
+      end
 
-module uart_tx(input clk, input [7:0] char, input go, output reg tx, output reg ready);
-	parameter s_ready =  0;
-	parameter s_start =  1;
-	parameter s_data0 =  2;
-	parameter s_data1 =  3;
-	parameter s_data2 =  4;
-	parameter s_data3 =  5;
-	parameter s_data4 =  6;
-	parameter s_data5 =  7;
-	parameter s_data6 =  8;
-	parameter s_data7 =  9;
-	parameter s_stop1 = 10;
-	parameter s_stop2 = 11;
-	parameter s_stop3 = 12;
-	parameter s_stop4 = 13;
+      data_out_masked = data_out;
+      if (txn_n[1] == 1'b0) data_out_masked[31:16] = 0;
+      if (txn_n == 2'b00) data_out_masked[15:8] = 0;
+  end
 
-	reg [3:0]	state = s_ready;
-	reg [7:0]	data = 8'h41;
+  // Assign outputs
+  assign uio_out[3] = spi_miso;
+  assign uio_oe[3] = 1;
+  assign uio_out[0] = user_interrupt;
+  assign uio_oe[0] = 1;
+  assign uio_out[1] = data_ready;
+  assign uio_oe[1] = 1;
 
-	always @(posedge clk) begin
-		ready <= state == s_ready;
-		case (state)
-			s_ready: begin
-				if (go) begin
-					data <= char;
-					state <= s_start;
-				end
-			end
-			s_start:	state <= s_data0;
-			s_data0:	state <= s_data1;
-			s_data1:	state <= s_data2;
-			s_data2:	state <= s_data3;
-			s_data3:	state <= s_data4;
-			s_data4:	state <= s_data5;
-			s_data5:	state <= s_data6;
-			s_data6:	state <= s_data7;
-			s_data7:	state <= s_stop1;
-			s_stop1:	state <= s_stop2;
-			s_stop2:	state <= s_stop3;
-			s_stop3:	state <= s_stop4;
-			s_stop4: begin
-				if (!go)
-					state <= s_ready;
-			end
-		endcase
-		case (state)
-			s_ready:	tx <= 1;
-			s_start:	tx <= 0;
-			s_data0:	tx <= data[0];
-			s_data1:	tx <= data[1];
-			s_data2:	tx <= data[2];
-			s_data3:	tx <= data[3];
-			s_data4:	tx <= data[4];
-			s_data5:	tx <= data[5];
-			s_data6:	tx <= data[6];
-			s_data7:	tx <= data[7];
-			s_stop1:	tx <= 1;
-			s_stop2:	tx <= 1;
-			s_stop3:	tx <= 1;
-			s_stop4:	tx <= 1;
-		endcase
-	end
+  assign uio_out[7:4] = 0;
+  assign uio_out[2] = 0;
+  assign uio_oe[7:4] = 0;
+  assign uio_oe[2] = 0;
+
+  // Ignore unused inputs
+  wire _unused = &{ena, uio_in[7], uio_in[3:0], 1'b0};
+
 endmodule
