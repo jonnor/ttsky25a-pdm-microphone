@@ -5,12 +5,11 @@ module cic3_pdm (
     input  wire        clk,        // PDM clock
     input  wire        rst,        // active-high synchronous reset
     input  wire        pdm_in,     // 1-bit PDM data input
-    output wire signed [15:0] pcm_out, // Decimated PCM output
+    output wire signed [23:0] pcm_out, // Decimated PCM output
     output wire        pcm_valid
 
 );
     //parameter DECIMATION = 64; // Decimation factor
-    parameter OUTPUT_SHIFT = 8; // Can tune this
 
     // Internal registers
     reg signed [31:0] integrator_0;
@@ -26,7 +25,7 @@ module cic3_pdm (
 
     reg signed [31:0] delay_0, delay_1, delay_2;
 
-    reg signed [15:0] pcm_out_r;
+    reg signed [31:0] pcm_out_r;
     reg pcm_valid_r;
 
     // Integrator stage (runs every clk)
@@ -75,7 +74,7 @@ module cic3_pdm (
             delay_2 <= comb_1;
 
             // Bit-shift down to get 16-bit output (tune shift based on DECIMATION and stage count)
-            pcm_out_r <= comb_2[OUTPUT_SHIFT + 15 : OUTPUT_SHIFT];
+            pcm_out_r <= comb_2[23:0];
             pcm_valid_r <= 1;
         end
 

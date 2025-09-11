@@ -37,9 +37,9 @@ module tqvp_jnms_pdm (
     reg       pdm_clk;
     (* keep *) reg       pdm_int;
 
-    reg [15:0] pcm;
+    reg [23:0] pcm;
     wire        pcm_valid;
-    wire [15:0] pcm_from_filter;
+    wire [23:0] pcm_from_filter;
 
     wire pdm_clk_out = pdm_enable[0] & pdm_clk;
     wire pdm_dat_in = ui_in[pdm_select];
@@ -69,7 +69,7 @@ module tqvp_jnms_pdm (
     assign data_out = (address == 6'h0) ? {31'h0, pdm_enable} :
                       (address == 6'h4) ? {24'h0, pdm_period} :
                       (address == 6'h8) ? {29'h0, pdm_select} :
-                      (address == 6'hc) ? {16'h0, pcm} :
+                      (address == 6'hc) ? {8'h0, pcm} :
                       32'h0;
 
     assign data_ready = 1;
